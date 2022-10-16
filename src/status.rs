@@ -1,4 +1,4 @@
-pub fn status() -> std::io::Result<()>{
+pub fn status() -> std::io::Result<()> {
     println!("Hello");
     Ok(())
 }

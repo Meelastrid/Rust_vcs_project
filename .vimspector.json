@@ -1,0 +1,33 @@
+{
+  "configurations": {
+    "launch": {
+      "adapter": "CodeLLDB",
+      "filetypes": [ "rust" ],
+      "default": "true",
+      "variables": {
+        "BUILD_IGNORED": { "shell": "cargo build" }
+      },
+      "breakpoints": {
+        "exception": {
+          "cpp_throw": "Y",
+          "cpp_catch": "Y"
+        }
+      },
+      "configuration": {
+        "request": "launch",
+        "cwd": "${workspaceRoot}",
+        "program": "${workspaceRoot}/target/debug/vcs",
+        "args": ["init", "--path", "test"]
+      }
+    },
+    "attach": {
+      "adapter": "CodeLLDB",
+      "filetypes": [ "rust", "c", "cpp", "jai" ],
+      "configuration": {
+        "request": "attach",
+        "program": "${workspaceRoot}/${fileBasenameNoExtension}",
+        "PID": "${PID}"
+      }
+    }
+  }
+}

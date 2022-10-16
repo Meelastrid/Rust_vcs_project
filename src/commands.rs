@@ -1,30 +1,29 @@
 // use std::fs;
 // use std::fs::{write, metadata};
-// use std::env;
+use std::env;
 // use std::path::PathBuf;
 // use std::sync::mpsc::RecvTimeoutError;
 // use hex_literal::hex;
 // use sha1::{Sha1, Digest};
 
-//     pub fn run_command(args: Vec<String>) -> std::io::Result<()> {
-//         match args[2].as_str() {
-//             "init" => init(args),
-//             "status" => status(),
-
-
-//             _ => Ok(()),
-
-//         }
-//     }
-
-// pub fn get_command_line_args() -> Vec<String> {
-//     let args: Vec<String> = env::args().collect();
-//     let len: usize = args.len();
-//     if len < 3 { 
-//         panic!("No arguments for vcs");
-//     }
-//     args
-// }
+//pub fn run_command(args: Vec<String>) -> std::io::Result<()> {
+//    match args[2].as_str() {
+//        "init" => init(args),
+//        "status" => status(),
+//
+//        _ => Ok(()),
+//
+//    }
+//}
+//
+//pub fn get_command_line_args() -> Vec<String> {
+//    let args: Vec<String> = env::args().collect();
+//    let len: usize = args.len();
+//    if len < 3 {
+//        panic!("No arguments for vcs");
+//    }
+//    args
+//}
 
 // pub fn get_hash(path: String) {
 //     let mut hasher = Sha1::new();
@@ -35,7 +34,7 @@
 //     // match t {
 //     //     // "blob" => get_hash
 //     // }
-// } 
+// }
 
 // pub fn create_objects(path: String){
 //     if metadata(&path).unwrap().is_file() == true {
@@ -78,7 +77,7 @@
 // }
 
 // pub fn commit() {
-    
+
 // }
 
 // pub fn jump_to_branch() {
