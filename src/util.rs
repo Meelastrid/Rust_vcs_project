@@ -10,6 +10,7 @@ use sha1::{Digest, Sha1};
 use std::env;
 use std::fs;
 use std::fs::{metadata, write, File};
+use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::Read;
 use std::path::Path;
@@ -77,6 +78,14 @@ pub fn get_hash(data: &String) -> String {
     hex::encode(hash_sum_u8)
 }
 
+pub fn get_hash_file(path: String) -> String {
+    let mut hasher = Sha1::new();
+    let mut file = fs::File::open(&path).unwrap();
+    io::copy(&mut file, &mut hasher).unwrap();
+    let hash_sum_u8 = hasher.finalize();
+    hex::encode(hash_sum_u8)
+}
+
 pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
     let objects_dir_path = vcs_dir + "/objects";
 
@@ -87,27 +96,35 @@ pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
     data.push(' ');
     data.push_str(file_size);
     data.push('\0');
-    let zlib_text = compress_zlib(path);
+    let zlib_text = compress_zlib(path.clone());
     // let zlib_text_string = str::from_utf8(&zlib_text).unwrap();
     let zlib_text_string = format!("{:?}", &zlib_text);
     let zlib_text_slice: &str = &zlib_text_string[..];
     data.push_str(zlib_text_slice);
 
-    let object_hash = get_hash(&data);
+
+    let object_hash = get_hash_file(path.clone());
     let object_dir_name: &str = &object_hash[0..2];
     let object_file_name: &str = &object_hash[2..];
 
     fs::create_dir(objects_dir_path.clone() + "/" + object_dir_name).unwrap();
-    let file_path = PathBuf::from(objects_dir_path + "/" + object_dir_name).join(object_file_name);
+    let file_path = PathBuf::from(objects_dir_path.clone() + "/" + object_dir_name).join(object_file_name);
 
-    write(&file_path, data).unwrap();
+    write(&file_path, &data).unwrap();
 
     let ref_prefix: &str = &commit[0..2];
     let ref_file_name: &str = &commit[2..];
-    let ref_path = PathBuf::from(objects_dir_path + "/" + ref_prefix).join(object_file_name);
-    fs::create_dir(objects_dir_path.clone() + "/" + ref_prefix).unwrap();
-    let mut refdata: String = object_hash + &path;
-    write(&ref_path, data).unwrap();
+    let ref_path = PathBuf::from(objects_dir_path.clone() + "/" + ref_prefix).join(ref_file_name);
+    if !file_path.exists() {
+    fs::create_dir(objects_dir_path + "/" + ref_prefix).unwrap();
+    }
+    let refdata: String = path + " " + &object_hash + "\n";
+    let mut ref_file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(&ref_path)
+        .unwrap();
+    ref_file.write_all(refdata.as_bytes()).unwrap();
 }
 
 pub fn create_tree_object(d: String, vcs_dir: String, parent: String) {
@@ -124,7 +141,7 @@ pub fn create_tree_object(d: String, vcs_dir: String, parent: String) {
     let object_pref: &str = &object_hash[0..2];
     let object_file: &str = &object_hash[2..];
 
-    let mut file_path = PathBuf::from(vcs_dir).join(object_dir).join(object_pref);
+    let mut file_path = PathBuf::from(vcs_dir.clone()).join(object_dir).join(object_pref);
     if !file_path.exists() {
         fs::create_dir_all(file_path.clone()).unwrap();
     }
@@ -132,10 +149,10 @@ pub fn create_tree_object(d: String, vcs_dir: String, parent: String) {
     write(&file_path, data).unwrap();
 
 
-    let mut ref_path = PathBuf::from(vcs_dir).join("refs").join(object_pref);
-    if !file_path.exists() {
-        fs::create_dir_all(file_path.clone()).unwrap();
-    }
+    //let mut ref_path = PathBuf::from(vcs_dir).join("refs").join(object_pref);
+    //if !file_path.exists() {
+    //    fs::create_dir_all(file_path.clone()).unwrap();
+    //}
 }
 
 //pub fn create_tree_object(d: String) {
@@ -178,18 +195,18 @@ pub fn create_object(t: String, path: String) {
 
 pub fn create_commit(path: String, branch: String, parent: String, message: String) {
     //create branch, write current commit hash there
-    let mut branch_path = PathBuf::from(path).join("branches").join(branch);
+    let branch_path = PathBuf::from(path.clone()).join(".vcs/branches").join(branch);
     let commit_hash = get_hash(&parent);
-    write(&branch_path, commit_hash).unwrap();
+    write(&branch_path, commit_hash.clone()).unwrap();
 
     //create commit object, write current commit hash there
     let commit_dir_name: &str = &commit_hash[0..2];
     let commit_file_name: &str = &commit_hash[2..];
 
     fs::create_dir(path.clone() + "/.vcs/objects/" + commit_dir_name).unwrap();
-    let commit_path = PathBuf::from(path + "/.vcs/objects/" + commit_dir_name).join(commit_file_name);
-    write(&branch_path, commit_hash).unwrap();
-    create_objects(path, path + "/.vcs", commit_hash)
+    let commit_path = PathBuf::from(path.clone() + "/.vcs/objects/" + commit_dir_name).join(commit_file_name);
+    write(&commit_path, message + "\n").unwrap();
+    create_objects(path.clone(), path + "/.vcs", commit_hash)
 
 }
 
@@ -197,10 +214,10 @@ pub fn create_objects(path: String, vcs_dir: String, commit: String) {
     if metadata(&path).unwrap().is_file() {
         create_blob_object(path, vcs_dir, commit);
     } else if metadata(&path).unwrap().is_dir() && !path.contains(".vcs") {
-        create_tree_object(path.clone(), vcs_dir.clone(), commit);
+        //create_tree_object(path.clone(), vcs_dir.clone(), commit.clone());
         let paths = fs::read_dir(&path).unwrap();
         for p in paths {
-            create_objects(p.as_ref().unwrap().path().display().to_string(), vcs_dir.clone(), commit);
+            create_objects(p.as_ref().unwrap().path().display().to_string(), vcs_dir.clone(), commit.clone());
         }
     }
 }
