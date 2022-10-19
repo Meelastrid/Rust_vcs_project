@@ -1,6 +1,6 @@
 use util::{
     compress_zlib, create_blob_object, create_objects, create_tree_object, decompress_zlib,
-    get_hash, run_command, create_commit
+    get_hash, run_command, create_initial_commit
 };
 use std::fs;
 

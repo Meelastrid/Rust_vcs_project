@@ -17,7 +17,8 @@
         "request": "launch",
         "cwd": "${workspaceRoot}",
         "program": "${workspaceRoot}/target/debug/vcs",
-        "args": ["init", "--path", "test"]
+        "args": ["log"]
+        //"args": ["init", "--path", "test"]
       }
     },
     "attach": {

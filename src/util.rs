@@ -28,11 +28,18 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::init::init;
 use crate::status::status;
+use crate::commit::commit;
+use crate::log::log;
 
 pub fn run_command(args: &Vec<String>) -> std::io::Result<()> {
     match args[1].as_str() {
         "init" => init(args),
         "status" => status(),
+        "commit" => commit(args[3].clone()),
+        "log" => log(),
+        //"jump" => jump(args),
+        //"new_branch" => new_branch(args),
+        //"merge" => new_branch(args),
 
         _ => Ok(()),
     }
@@ -41,7 +48,7 @@ pub fn run_command(args: &Vec<String>) -> std::io::Result<()> {
 pub fn get_command_line_args() -> Vec<String> {
     let args: Vec<String> = env::args().collect();
     let len: usize = args.len();
-    if len < 3 {
+    if len < 2 {
         panic!("No arguments for vcs");
     }
     args
@@ -115,11 +122,12 @@ pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
     let ref_prefix: &str = &commit[0..2];
     let ref_file_name: &str = &commit[2..];
     let ref_path = PathBuf::from(objects_dir_path.clone() + "/" + ref_prefix).join(ref_file_name);
-    if !file_path.exists() {
-    fs::create_dir(objects_dir_path + "/" + ref_prefix).unwrap();
+    if !ref_path.exists() {
+    fs::create_dir_all(objects_dir_path + "/" + ref_prefix).unwrap();
     }
     let refdata: String = path + " " + &object_hash + "\n";
     let mut ref_file = OpenOptions::new()
+        .create(true)
         .write(true)
         .append(true)
         .open(&ref_path)
@@ -193,7 +201,7 @@ pub fn create_object(t: String, path: String) {
     // }
 }
 
-pub fn create_commit(path: String, branch: String, parent: String, message: String) {
+pub fn create_initial_commit(path: String, branch: String, parent: String, message: String) {
     //create branch, write current commit hash there
     let branch_path = PathBuf::from(path.clone()).join(".vcs/branches").join(branch);
     let commit_hash = get_hash(&parent);
@@ -202,10 +210,11 @@ pub fn create_commit(path: String, branch: String, parent: String, message: Stri
     //create commit object, write current commit hash there
     let commit_dir_name: &str = &commit_hash[0..2];
     let commit_file_name: &str = &commit_hash[2..];
-
     fs::create_dir(path.clone() + "/.vcs/objects/" + commit_dir_name).unwrap();
     let commit_path = PathBuf::from(path.clone() + "/.vcs/objects/" + commit_dir_name).join(commit_file_name);
-    write(&commit_path, message + "\n").unwrap();
+    write(&commit_path, message + "\n" + &parent + "\n").unwrap();
+
+    //create objects for commit
     create_objects(path.clone(), path + "/.vcs", commit_hash)
 
 }
