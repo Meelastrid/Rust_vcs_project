@@ -1,5 +1,6 @@
 use crate::status::nothing_to_commit;
 use crate::util::compress_zlib;
+use crate::util::compress_file;
 use crate::util::get_hash_file;
 use crate::util::get_size_of_the_file;
 use sha1::{Digest, Sha1};
@@ -40,7 +41,8 @@ pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
     let file_path =
         PathBuf::from(objects_dir_path.clone() + "/" + object_dir_name).join(object_file_name);
 
-    write(&file_path, &data).unwrap();
+    //write(&file_path, &data).unwrap();
+    compress_file(path.clone(), file_path.display().to_string());
 
     let ref_prefix: &str = &commit[0..2];
     let ref_file_name: &str = &commit[2..];
@@ -84,23 +86,23 @@ pub fn commit(message: String) -> std::io::Result<()> {
     let branch_path = PathBuf::from("test")
         .join(".vcs/branches")
         .join(current_branch);
-    let commit_hash = get_hash(&current_commit);
+    let commit_hash = get_hash_file(["test/.vcs/objects".to_string(), current_commit[0..2].to_string(), current_commit[2..].to_string()].join("/"));
     write(&branch_path, commit_hash.clone()).unwrap();
 
     //create commit object, write current commit hash there
     let commit_dir_name: &str = &commit_hash[0..2];
     let commit_file_name: &str = &commit_hash[2..];
-    fs::create_dir("test".to_string() + "/.vcs/objects/" + commit_dir_name).unwrap();
+    fs::create_dir_all("test".to_string() + "/.vcs/objects/" + commit_dir_name).unwrap();
     let commit_path = PathBuf::from("test".to_string() + "/.vcs/objects/" + commit_dir_name)
         .join(commit_file_name);
 
+    write(&commit_path, message + "\n").unwrap();
     let mut commit_file = OpenOptions::new()
         .create(true)
         .write(true)
         .append(true)
         .open(&commit_path)
         .unwrap();
-    commit_file.write_all((message + "\n").as_bytes()).unwrap();
     commit_file
         .write_all((current_commit + "\n").as_bytes())
         .unwrap();

@@ -1,5 +1,5 @@
 // use util.rs;
-use crate::{create_objects, create_initial_commit, get_hash};
+use crate::{create_initial_commit, create_objects, get_hash};
 use std::env;
 use std::fs;
 use std::fs::{metadata, write};
@@ -28,8 +28,16 @@ pub fn init(args: &Vec<String>) -> std::io::Result<()> {
     let p_hash = get_hash(&parent);
 
     //create_objects(args[3].clone(), args[3].clone() + "/.vcs", parent);
-    create_initial_commit(args[3].clone(), "master".to_string(), parent.clone(), "Initial commit".to_string());
+    create_initial_commit(
+        args[3].clone(),
+        "master".to_string(),
+        parent.clone(),
+        "Initial commit".to_string(),
+    );
     println!("Initialized VCS repository in {}", args[3]);
-    println!("Created commit:\n[master {}] Initial commit", get_hash(&parent));
+    println!(
+        "Created commit:\n[master {}] Initial commit",
+        get_hash(&parent)
+    );
     Ok(())
 }

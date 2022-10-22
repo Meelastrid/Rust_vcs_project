@@ -1,16 +1,15 @@
-use util::{
-    compress_zlib, create_blob_object, create_objects, create_tree_object, decompress_zlib,
-    get_hash, run_command, create_initial_commit
-};
 use std::fs;
+use util::{
+    compress_zlib, create_blob_object, create_initial_commit, create_objects, create_tree_object,
+    decompress_zlib, get_hash, run_command,
+};
 
 use crate::util::get_command_line_args;
 
 mod commands;
 mod commit;
 mod init;
-mod jump_to_branch;
-mod jump_to_commit;
+mod jump;
 mod log;
 mod merge;
 mod new_branch;

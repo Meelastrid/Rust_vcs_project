@@ -1,10 +1,10 @@
-use crate::util::get_hash_file;
 use array_tool::vec::{Intersect, Uniq};
 use std::collections::HashMap;
 use std::fs::{self, metadata, DirEntry, File};
 use std::io::{BufRead, BufReader};
-use std::path::Path;
 use std::path::PathBuf;
+use crate::util::get_hash_file;
+
 pub fn get_current_branch() -> String {
     fs::read_to_string("test/.vcs/HEAD").unwrap()
 }
@@ -15,10 +15,10 @@ pub fn get_files_in_commit() -> HashMap<String, String> {
     let reader = BufReader::new(
         File::open("test/.vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
     );
-    let mut commit_read = false;
+    let mut commit_read = 2;
     for line in reader.lines() {
-        if !commit_read {
-            commit_read = true;
+        if commit_read > 0 {
+            commit_read -= 1;
             continue;
         }
         for (prefix, suffix) in line.unwrap().split_once(" ") {
