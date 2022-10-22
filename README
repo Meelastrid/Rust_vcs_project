@@ -1,0 +1,11 @@
+vcs is a lightweight version control system.
+Available commands:
+
+vcs init --path <directory path>
+vcs status
+vcs log
+vcs commit --message <message>
+vcs new_branch --name <branch_name>
+vcs jump --branch <branch_name>
+vcs jump --commit <commit_hash>
+vcs merge --branch <branch_name>

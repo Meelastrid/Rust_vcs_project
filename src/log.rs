@@ -3,9 +3,9 @@ use std::fs;
 use std::path::PathBuf;
 pub fn log() -> std::io::Result<()> {
     println!("Log:");
-    let vcs_dir = "test/.vcs".to_string();
+    let vcs_dir = ".vcs".to_string();
     let br = get_current_branch();
-    let commit = fs::read_to_string("test/.vcs/branches/".to_string() + &br).unwrap();
+    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
     let mut ref_prefix: &str = &commit[0..2];
     let mut ref_file_name: &str = &commit[2..];
     let mut objects_dir_path = vcs_dir + "/objects";
@@ -13,7 +13,7 @@ pub fn log() -> std::io::Result<()> {
     let mut c: String = "valid".to_string();
 
     while c != "null" {
-        let vcs_dir = "test/.vcs".to_string();
+        let vcs_dir = ".vcs".to_string();
         let contents = fs::read_to_string(ref_path.clone()).unwrap();
         println!("{contents}");
         let mut lns = contents.lines();

@@ -1,19 +1,19 @@
-use array_tool::vec::{Intersect, Uniq};
+use array_tool::vec::Uniq;
 use std::collections::HashMap;
-use std::fs::{self, metadata, DirEntry, File};
+use std::fs::{self, metadata, File};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use crate::util::get_hash_file;
 
 pub fn get_current_branch() -> String {
-    fs::read_to_string("test/.vcs/HEAD").unwrap()
+    fs::read_to_string(".vcs/HEAD").unwrap()
 }
 pub fn get_files_in_commit() -> HashMap<String, String> {
     let mut files: HashMap<String, String> = HashMap::new();
     let br = get_current_branch();
-    let commit = fs::read_to_string("test/.vcs/branches/".to_string() + &br).unwrap();
+    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
     let reader = BufReader::new(
-        File::open("test/.vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
+        File::open(".vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
     );
     let mut commit_read = 2;
     for line in reader.lines() {
@@ -54,8 +54,13 @@ fn collect_all_files_in_dir(dir: String) -> Vec<String> {
     res_files
 }
 
+pub fn get_workdir() -> String {
+    fs::read_to_string(".vcs/config").unwrap()
+}
+
 pub fn nothing_to_commit() -> bool {
-    let my = collect_all_files_in_dir("test".to_string());
+    let workdir = get_workdir();
+    let my = collect_all_files_in_dir(workdir);
     let in_commit: Vec<String> = get_files_in_commit().keys().cloned().collect();
     let added = my.uniq(in_commit.clone());
     let deleted = in_commit.uniq(my);
@@ -67,9 +72,10 @@ pub fn nothing_to_commit() -> bool {
 }
 pub fn status() -> std::io::Result<()> {
     //let my = check_new_files();
+    let workdir = get_workdir();
     let br = get_current_branch();
-    let commit = fs::read_to_string("test/.vcs/branches/".to_string() + &br).unwrap();
-    let my = collect_all_files_in_dir("test".to_string());
+    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
+    let my = collect_all_files_in_dir(workdir);
     let in_commit: Vec<String> = get_files_in_commit().keys().cloned().collect();
     let added = my.uniq(in_commit.clone());
     let deleted = in_commit.uniq(my);

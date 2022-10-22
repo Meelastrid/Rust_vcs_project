@@ -1,13 +1,11 @@
 // use util.rs;
-use crate::{create_initial_commit, create_objects, get_hash};
-use std::env;
+use crate::{create_initial_commit, get_hash};
 use std::fs;
-use std::fs::{metadata, write};
+use std::fs::write;
 use std::path::PathBuf;
-use std::sync::mpsc::RecvTimeoutError;
 
 pub fn init(args: &Vec<String>) -> std::io::Result<()> {
-    let path: String = args[3].clone() + "/.vcs";
+    let path: String = ".vcs".to_string();
     fs::create_dir(&path)?;
     fs::create_dir(path.clone() + "/objects")?;
     //fs::create_dir(path.clone() + "/refs")?;
@@ -17,17 +15,12 @@ pub fn init(args: &Vec<String>) -> std::io::Result<()> {
     let file_path = PathBuf::from(&path).join("config");
     write(
         &file_path,
-        "[core]
-	repositoryformatversion = 0
-	filemode = false
-	bare = false",
+        args[3].clone(),
     )?;
-    let file_path = PathBuf::from(&path).join("description");
-    write(&file_path, "").unwrap();
+    //let file_path = PathBuf::from(&path).join("description");
+    //write(&file_path, "").unwrap();
     let parent = "null".to_string();
-    let p_hash = get_hash(&parent);
 
-    //create_objects(args[3].clone(), args[3].clone() + "/.vcs", parent);
     create_initial_commit(
         args[3].clone(),
         "master".to_string(),

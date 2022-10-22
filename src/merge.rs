@@ -1,18 +1,18 @@
 use flate2::read;
 use crate::util::get_hash_file;
 use crate::commit::commit;
-use array_tool::vec::{Intersect, Uniq, Union};
+use array_tool::vec::{Intersect, Uniq};
 use std::collections::HashMap;
 use std::fs::{self, write, metadata, File};
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 
 pub fn get_current_branch() -> String {
-    fs::read_to_string("test/.vcs/HEAD").unwrap()
+    fs::read_to_string(".vcs/HEAD").unwrap()
 }
 
 pub fn get_head_in_branch(branch: String) -> String {
-    fs::read_to_string(["test/.vcs/branches", &branch].join("/")).unwrap()
+    fs::read_to_string([".vcs/branches", &branch].join("/")).unwrap()
 }
 
 fn collect_all_files_in_dir(dir: String) -> Vec<String> {
@@ -33,9 +33,9 @@ fn collect_all_files_in_dir(dir: String) -> Vec<String> {
 pub fn get_files_in_commit() -> HashMap<String, String> {
     let mut files: HashMap<String, String> = HashMap::new();
     let br = get_current_branch();
-    let commit = fs::read_to_string("test/.vcs/branches/".to_string() + &br).unwrap();
+    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
     let reader = BufReader::new(
-        File::open("test/.vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
+        File::open(".vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
     );
     let mut commit_read = false;
     for line in reader.lines() {
@@ -60,9 +60,13 @@ pub fn check_modified_files() -> Vec<String> {
     }
     res_files
 }
+    pub fn get_workdir() -> String {
+        fs::read_to_string(".vcs/config").unwrap()
+    }
 
 pub fn nothing_to_commit() -> bool {
-    let my = collect_all_files_in_dir("test".to_string());
+    let workdir = get_workdir();
+    let my = collect_all_files_in_dir(workdir);
     let in_commit: Vec<String> = get_files_in_commit().keys().cloned().collect();
     let added = my.uniq(in_commit.clone());
     let deleted = in_commit.uniq(my);
@@ -75,9 +79,9 @@ pub fn nothing_to_commit() -> bool {
 
 pub fn get_files_in_branch(br: String) -> HashMap<String, String> {
     let mut files: HashMap<String, String> = HashMap::new();
-    let commit = fs::read_to_string("test/.vcs/branches/".to_string() + &br).unwrap();
+    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
     let reader = BufReader::new(
-        File::open("test/.vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
+        File::open(".vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
     );
     let mut commit_read = false;
     for line in reader.lines() {
@@ -94,7 +98,7 @@ pub fn get_files_in_branch(br: String) -> HashMap<String, String> {
 
 pub fn get_parent(commit: String) -> String {
 
-        let vcs_dir = "test/.vcs/objects".to_string();
+        let vcs_dir = ".vcs/objects".to_string();
         let ref_prefix: String = commit[0..2].to_string();
         let ref_file_name: String = commit[2..].to_string();
         let contents = fs::read_to_string([vcs_dir, ref_prefix, ref_file_name].join("/")).unwrap();
@@ -124,7 +128,7 @@ pub fn check_modified_files_between_commits(commit1: String, commit2: String) ->
     let mut files_in_commit1: HashMap<String, String> = HashMap::new();
     let mut files_in_commit2: HashMap<String, String> = HashMap::new();
     let reader1 = BufReader::new(
-        File::open("test/.vcs/objects/".to_string() + &commit1[..2] + "/" + &commit1[2..]).unwrap(),
+        File::open(".vcs/objects/".to_string() + &commit1[..2] + "/" + &commit1[2..]).unwrap(),
     );
     let mut commit_read = 2;
     for line in reader1.lines() {
@@ -137,7 +141,7 @@ pub fn check_modified_files_between_commits(commit1: String, commit2: String) ->
         }
     }
     let reader2 = BufReader::new(
-        File::open("test/.vcs/objects/".to_string() + &commit2[..2] + "/" + &commit2[2..]).unwrap(),
+        File::open(".vcs/objects/".to_string() + &commit2[..2] + "/" + &commit2[2..]).unwrap(),
     );
     commit_read = 2;
     for line in reader2.lines() {
@@ -194,7 +198,7 @@ pub fn merge(branch: String) -> std::io::Result<()> {
 
     for fa in files_to_add.clone() {
         let mut f =
-            File::open("test/.vcs/objects/".to_string() + &their_files[&fa][0..2] + "/" + &their_files[&fa][2..]).unwrap();
+            File::open(".vcs/objects/".to_string() + &their_files[&fa][0..2] + "/" + &their_files[&fa][2..]).unwrap();
         let mut data = Vec::new();
         f.read_to_end(&mut data).unwrap();
         let mut gz = read::GzDecoder::new(&data[..]);
@@ -205,12 +209,14 @@ pub fn merge(branch: String) -> std::io::Result<()> {
         std::fs::create_dir_all(prefix).unwrap();
         write(&path, text.clone()).unwrap();
     }
+
+    let workdir = get_workdir();
     for fr in files_to_remove.clone() {
-    fs::remove_file("test/".to_string() + &fr).unwrap();
+    fs::remove_file(workdir.clone() + &fr).unwrap();
     }
     for fm in their_modified.clone() {
         let mut f =
-            File::open("test/.vcs/objects/".to_string() + &their_files[&fm][0..2] + "/" + &their_files[&fm][2..]).unwrap();
+            File::open(".vcs/objects/".to_string() + &their_files[&fm][0..2] + "/" + &their_files[&fm][2..]).unwrap();
         let mut data = Vec::new();
         f.read_to_end(&mut data).unwrap();
         let mut gz = read::GzDecoder::new(&data[..]);
@@ -223,7 +229,7 @@ pub fn merge(branch: String) -> std::io::Result<()> {
     }
 
     commit("Merged branch ".to_string() + &branch).unwrap();
-    fs::remove_file("test/.vcs/branches/".to_string() + &branch).unwrap();
+    fs::remove_file(".vcs/branches/".to_string() + &branch).unwrap();
 
 
 

@@ -1,11 +1,6 @@
-use compress::zlib;
 use flate2::bufread::ZlibDecoder;
 use flate2::bufread::ZlibEncoder;
-use flate2::read::GzDecoder;
 use flate2::Compression;
-use fs_extra::file::read_to_string;
-use hex::encode;
-use hex_literal::hex;
 use sha1::{Digest, Sha1};
 use std::env;
 use std::fs;
@@ -15,14 +10,11 @@ use std::io::prelude::*;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
-// use std::fs::File;
 use std::io;
-use std::io::prelude::*;
 use std::io::BufReader;
 use std::str;
 extern crate fs_extra;
 use fs_extra::dir::get_size;
-use serde_derive::{Deserialize, Serialize};
 use std::io::copy;
 use flate2::write::GzEncoder;
 
@@ -45,15 +37,32 @@ pub fn run_command(args: &Vec<String>) -> std::io::Result<()> {
         "new_branch" => new_branch(args[3].clone()),
         "jump" => jump(args[2].clone(), args[3].clone()),
         "merge" => merge(args[3].clone()),
-        _ => Ok(()),
+        "help" => help(),
+        _ => help(),
     }
+}
+
+pub fn help() -> std::io::Result<()> {
+    println!("vcs is a lightweight version control system.");
+    println!("Available commands:");
+    println!();
+    println!("vcs init --path <directory path>");
+    println!("vcs status");
+    println!("vcs log");
+    println!("vcs commit --message <message>");
+    println!("vcs new_branch --name <branch_name>");
+    println!("vcs jump --branch <branch_name>");
+    println!("vcs jump --commit <commit_hash>");
+    println!("vcs merge --branch <branch_name>");
+
+        Ok(())
 }
 
 pub fn get_command_line_args() -> Vec<String> {
     let args: Vec<String> = env::args().collect();
     let len: usize = args.len();
     if len < 2 {
-        panic!("No arguments for vcs");
+        panic!("No arguments for vcs. See `vcs help` for help.");
     }
     args
 }
@@ -162,7 +171,7 @@ pub fn create_tree_object(d: String, vcs_dir: String, parent: String) {
     let object_pref: &str = &object_hash[0..2];
     let object_file: &str = &object_hash[2..];
 
-    let mut file_path = PathBuf::from(vcs_dir.clone())
+    let mut file_path = PathBuf::from(vcs_dir)
         .join(object_dir)
         .join(object_pref);
     if !file_path.exists() {
@@ -171,68 +180,29 @@ pub fn create_tree_object(d: String, vcs_dir: String, parent: String) {
     file_path = file_path.join(object_file);
     write(&file_path, data).unwrap();
 
-    //let mut ref_path = PathBuf::from(vcs_dir).join("refs").join(object_pref);
-    //if !file_path.exists() {
-    //    fs::create_dir_all(file_path.clone()).unwrap();
-    //}
 }
-
-//pub fn create_tree_object(d: String) {
-//    let dir_path = fs::read_dir(d.clone()).unwrap();
-//    for path in dir_path {
-//        let folder_size_string = get_size(path.unwrap().path().display().to_string())
-//            .unwrap()
-//            .to_string();
-//        let folder_size: &str = &folder_size_string[..];
-//        let object_type: String = "tree".to_string();
-//        let mut data = object_type;
-//        data.push(' ');
-//        data.push_str(folder_size);
-//        data.push('\0');
-//
-//        let object_hash = get_hash(&data);
-//        let object_dir: &str = &object_hash[0..2];
-//        let object_file: &str = &object_hash[2..];
-//
-//        let dir_path: String = d.clone();
-//        if !Path::new(&(dir_path.clone() + "/vcs/" + object_dir)).exists() {
-//            fs::create_dir(dir_path.clone() + "/vcs/" + object_dir).unwrap();
-//        }
-//        let file_path = PathBuf::from(d.clone() + "/vcs/" + object_dir).join(object_file);
-//        //    println!("{}", data);
-//        write(&file_path, data).unwrap();
-//    }
-//}
 
 pub fn get_file_name_from_path(path: &str) {
     let ancestors = Path::new(&path).file_name().unwrap().to_str().unwrap();
     println!("File name was {}", ancestors);
 }
 
-pub fn create_object(t: String, path: String) {
-    // match t {
-    //     // "blob" => get_hash(),
-    // }
-}
-
 pub fn create_initial_commit(path: String, branch: String, parent: String, message: String) {
     //create branch, write current commit hash there
-    let branch_path = PathBuf::from(path.clone())
-        .join(".vcs/branches")
-        .join(branch);
+    let branch_path = PathBuf::from(".vcs/branches").join(branch);
     let commit_hash = get_hash(&parent);
     write(&branch_path, commit_hash.clone()).unwrap();
 
     //create commit object, write current commit hash there
     let commit_dir_name: &str = &commit_hash[0..2];
     let commit_file_name: &str = &commit_hash[2..];
-    fs::create_dir(path.clone() + "/.vcs/objects/" + commit_dir_name).unwrap();
+    fs::create_dir(".vcs/objects/".to_string() + commit_dir_name).unwrap();
     let commit_path =
-        PathBuf::from(path.clone() + "/.vcs/objects/" + commit_dir_name).join(commit_file_name);
+        PathBuf::from(".vcs/objects/".to_string() + commit_dir_name).join(commit_file_name);
     write(&commit_path, message + "\n" + &parent + "\n").unwrap();
 
     //create objects for commit
-    create_objects(path.clone(), path + "/.vcs", commit_hash)
+    create_objects(path, ".vcs".to_string(), commit_hash)
 }
 
 pub fn create_objects(path: String, vcs_dir: String, commit: String) {

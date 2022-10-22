@@ -5,7 +5,7 @@ use crate::util::get_hash_file;
 use crate::util::get_size_of_the_file;
 use sha1::{Digest, Sha1};
 use std::fs::OpenOptions;
-use std::fs::{self, metadata, write, DirEntry, File};
+use std::fs::{self, metadata, write};
 use std::io::prelude::*;
 use std::path::PathBuf;
 
@@ -15,6 +15,9 @@ pub fn get_hash(data: &String) -> String {
     hasher.update(data);
     let hash_sum_u8 = hasher.finalize();
     hex::encode(hash_sum_u8)
+}
+pub fn get_workdir() -> String {
+    fs::read_to_string(".vcs/config").unwrap()
 }
 
 pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
@@ -28,7 +31,6 @@ pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
     data.push_str(file_size);
     data.push('\0');
     let zlib_text = compress_zlib(path.clone());
-    // let zlib_text_string = str::from_utf8(&zlib_text).unwrap();
     let zlib_text_string = format!("{:?}", &zlib_text);
     let zlib_text_slice: &str = &zlib_text_string[..];
     data.push_str(zlib_text_slice);
@@ -80,20 +82,19 @@ pub fn commit(message: String) -> std::io::Result<()> {
         println!("Nothing to commit.");
         return Ok(());
     }
-    let current_branch: String = fs::read_to_string("test/.vcs/HEAD").unwrap();
+    let current_branch: String = fs::read_to_string(".vcs/HEAD").unwrap();
     let current_commit =
-        fs::read_to_string("test/.vcs/branches/".to_string() + &current_branch).unwrap();
-    let branch_path = PathBuf::from("test")
-        .join(".vcs/branches")
+        fs::read_to_string(".vcs/branches/".to_string() + &current_branch).unwrap();
+    let branch_path = PathBuf::from(".vcs/branches")
         .join(current_branch);
-    let commit_hash = get_hash_file(["test/.vcs/objects".to_string(), current_commit[0..2].to_string(), current_commit[2..].to_string()].join("/"));
+    let commit_hash = get_hash_file([".vcs/objects".to_string(), current_commit[0..2].to_string(), current_commit[2..].to_string()].join("/"));
     write(&branch_path, commit_hash.clone()).unwrap();
 
     //create commit object, write current commit hash there
     let commit_dir_name: &str = &commit_hash[0..2];
     let commit_file_name: &str = &commit_hash[2..];
-    fs::create_dir_all("test".to_string() + "/.vcs/objects/" + commit_dir_name).unwrap();
-    let commit_path = PathBuf::from("test".to_string() + "/.vcs/objects/" + commit_dir_name)
+    fs::create_dir_all(".vcs/objects/".to_string() + commit_dir_name).unwrap();
+    let commit_path = PathBuf::from(".vcs/objects/".to_string() + commit_dir_name)
         .join(commit_file_name);
 
     write(&commit_path, message + "\n").unwrap();
@@ -108,9 +109,10 @@ pub fn commit(message: String) -> std::io::Result<()> {
         .unwrap();
 
     //create objects for commit
+    let workdir = get_workdir();
     create_objects(
-        "test".to_string(),
-        "test".to_string() + "/.vcs",
+        workdir,
+        ".vcs".to_string(),
         commit_hash,
     );
     Ok(())
