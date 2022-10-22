@@ -19,7 +19,7 @@
         "program": "${workspaceRoot}/target/debug/vcs",
         //"args": ["log"]
         //"args": ["init", "--path", "test"]
-        "args": ["merge", "--branch", "test1"]
+        "args": ["merge", "--branch", "test3"]
       }
     },
     "attach": {

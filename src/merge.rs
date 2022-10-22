@@ -152,7 +152,7 @@ pub fn check_modified_files_between_commits(commit1: String, commit2: String) ->
 
     let files_list1: Vec<String> = files_in_commit1.keys().cloned().collect();
     let files_list2: Vec<String> = files_in_commit2.keys().cloned().collect();
-    let common_files: Vec<String> = files_list1.union(files_list2);
+    let common_files: Vec<String> = files_list1.intersect(files_list2);
     let mut diff: Vec<String> = Vec::new();
     for file in common_files {
         if files_in_commit1[file.as_str()] != files_in_commit2[file.as_str()] {
@@ -172,8 +172,8 @@ pub fn merge(branch: String) -> std::io::Result<()> {
         println!("Branch dirty. Please commit your changes before merging.");
         return Ok(());
     }
-    let our_files: HashMap<String, String> = get_files_in_branch(branch.clone());
-    let our_files_list: Vec< String> = get_files_in_branch(branch.clone()).keys().cloned().collect();
+    let our_files: HashMap<String, String> = get_files_in_branch("master".to_string());
+    let our_files_list: Vec< String> = get_files_in_branch("master".to_string()).keys().cloned().collect();
     let their_files: HashMap<String, String> = get_files_in_branch(branch.clone());
     let their_files_list: Vec<String> = get_files_in_branch(branch.clone()).keys().cloned().collect();
     let common_commit = find_common_commit("master".to_string(), branch.clone());
