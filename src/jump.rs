@@ -4,15 +4,20 @@ use std::fs::{self, write, File};
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 
-
 pub fn get_workdir() -> String {
-    fs::read_to_string(".vcs/config").unwrap()
+    fs::read_to_string(PathBuf::from(".vcs").join("config")).unwrap()
 }
 
 pub fn restore_files_in_commit(commit: String) {
     let mut files: HashMap<String, String> = HashMap::new();
     let reader = BufReader::new(
-        File::open(".vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
+        File::open(
+            PathBuf::from(".vcs")
+                .join("objects")
+                .join(&commit[..2])
+                .join(&commit[2..]),
+        )
+        .unwrap(),
     );
     let mut header_read = 2;
     for line in reader.lines() {
@@ -25,8 +30,13 @@ pub fn restore_files_in_commit(commit: String) {
         }
     }
     for (file, hash) in files.iter() {
-        let mut f =
-            File::open(".vcs/objects/".to_string() + &hash[..2] + "/" + &hash[2..]).unwrap();
+        let mut f = File::open(
+            PathBuf::from(".vcs")
+                .join("objects")
+                .join(&hash[..2])
+                .join(&hash[2..]),
+        )
+        .unwrap();
 
         let mut data = Vec::new();
         f.read_to_end(&mut data).unwrap();
@@ -60,12 +70,11 @@ pub fn delete_all_files(path: String) {
 }
 
 pub fn restore_all_files_branch(name: String) -> std::io::Result<()> {
-    let commit = fs::read_to_string(".vcs/branches/".to_string() + &name).unwrap();
+    let commit = fs::read_to_string(PathBuf::from(".vcs").join("branches").join(&name)).unwrap();
 
     restore_files_in_commit(commit);
 
-    let path: String = ".vcs".to_string();
-    let file_path = PathBuf::from(&path).join("HEAD");
+    let file_path = PathBuf::from(".vcs").join("HEAD");
     write(&file_path, name).unwrap();
 
     Ok(())

@@ -1,9 +1,4 @@
-use util::{
-    create_initial_commit,
-     get_hash, run_command,
-};
-
-use crate::util::get_command_line_args;
+use util::{create_initial_commit, get_command_line_args, get_hash, run_command};
 
 mod commands;
 mod commit;
@@ -17,5 +12,5 @@ mod util;
 
 fn main() {
     let args = get_command_line_args();
-    let ok = run_command(&args);
+    run_command(&args).unwrap();
 }

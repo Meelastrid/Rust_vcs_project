@@ -1,17 +1,17 @@
+use crate::util::get_hash_file;
 use array_tool::vec::Uniq;
 use std::collections::HashMap;
 use std::fs::{self, metadata, File};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use crate::util::get_hash_file;
 
 pub fn get_current_branch() -> String {
-    fs::read_to_string(".vcs/HEAD").unwrap()
+    fs::read_to_string(PathBuf::from(".vcs").join("HEAD")).unwrap()
 }
 pub fn get_files_in_commit() -> HashMap<String, String> {
     let mut files: HashMap<String, String> = HashMap::new();
     let br = get_current_branch();
-    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
+    let commit = fs::read_to_string(PathBuf::from(".vcs").join("branches").join(&br)).unwrap();
     let reader = BufReader::new(
         File::open(".vcs/objects/".to_string() + &commit[..2] + "/" + &commit[2..]).unwrap(),
     );
@@ -32,7 +32,7 @@ pub fn check_modified_files() -> Vec<String> {
     let mut res_files: Vec<String> = Vec::new();
     let files = get_files_in_commit();
     for (file, hash) in files.iter() {
-        if PathBuf::from(file).exists() && !(get_hash_file(file.clone()) == hash.clone()) {
+        if PathBuf::from(file).exists() && !(get_hash_file(&PathBuf::from(file)) == hash.clone()) {
             res_files.push(file.clone());
         }
     }
@@ -55,7 +55,7 @@ fn collect_all_files_in_dir(dir: String) -> Vec<String> {
 }
 
 pub fn get_workdir() -> String {
-    fs::read_to_string(".vcs/config").unwrap()
+    fs::read_to_string(PathBuf::from(".vcs").join("config")).unwrap()
 }
 
 pub fn nothing_to_commit() -> bool {
@@ -74,7 +74,7 @@ pub fn status() -> std::io::Result<()> {
     //let my = check_new_files();
     let workdir = get_workdir();
     let br = get_current_branch();
-    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
+    let commit = fs::read_to_string(PathBuf::from(".vcs").join("branches").join(&br)).unwrap();
     let my = collect_all_files_in_dir(workdir);
     let in_commit: Vec<String> = get_files_in_commit().keys().cloned().collect();
     let added = my.uniq(in_commit.clone());

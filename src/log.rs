@@ -5,7 +5,7 @@ pub fn log() -> std::io::Result<()> {
     println!("Log:");
     let vcs_dir = ".vcs".to_string();
     let br = get_current_branch();
-    let commit = fs::read_to_string(".vcs/branches/".to_string() + &br).unwrap();
+    let commit = fs::read_to_string(PathBuf::from(".vcs").join("branches").join(&br)).unwrap();
     let mut ref_prefix: &str = &commit[0..2];
     let mut ref_file_name: &str = &commit[2..];
     let mut objects_dir_path = vcs_dir + "/objects";

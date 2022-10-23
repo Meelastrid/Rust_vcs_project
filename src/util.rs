@@ -6,17 +6,17 @@ use std::env;
 use std::fs;
 use std::fs::OpenOptions;
 use std::fs::{metadata, write, File};
+use std::io;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
-use std::io;
-use std::io::BufReader;
 use std::str;
 extern crate fs_extra;
+use flate2::write::GzEncoder;
 use fs_extra::dir::get_size;
 use std::io::copy;
-use flate2::write::GzEncoder;
 
 // use std::sync::mpsc::RecvTimeoutError;
 
@@ -24,9 +24,9 @@ use crate::commit::commit;
 use crate::init::init;
 use crate::jump::jump;
 use crate::log::log;
+use crate::merge::merge;
 use crate::new_branch::new_branch;
 use crate::status::status;
-use crate::merge::merge;
 
 pub fn run_command(args: &Vec<String>) -> std::io::Result<()> {
     match args[1].as_str() {
@@ -55,7 +55,7 @@ pub fn help() -> std::io::Result<()> {
     println!("vcs jump --commit <commit_hash>");
     println!("vcs merge --branch <branch_name>");
 
-        Ok(())
+    Ok(())
 }
 
 pub fn get_command_line_args() -> Vec<String> {
@@ -75,7 +75,7 @@ pub fn decompress_zlib(bytes: Vec<u8>) -> io::Result<String> {
     Ok(s)
 }
 
-pub fn compress_zlib(path: String) -> Vec<u8> {
+pub fn compress_zlib(path: &PathBuf) -> Vec<u8> {
     let f = File::open(path).unwrap();
     let b = BufReader::new(f);
     let mut z = ZlibEncoder::new(b, Compression::fast());
@@ -85,12 +85,12 @@ pub fn compress_zlib(path: String) -> Vec<u8> {
     buffer
 }
 
-pub fn get_size_of_the_file(path: String) -> u64 {
+pub fn get_size_of_the_file(path: &PathBuf) -> u64 {
     let file_lenth = fs::metadata(path).unwrap();
     file_lenth.len()
 }
 
-pub fn get_hash(data: &String) -> String {
+pub fn get_hash(data: &str) -> String {
     let mut hasher = Sha1::new();
 
     hasher.update(data);
@@ -98,7 +98,7 @@ pub fn get_hash(data: &String) -> String {
     hex::encode(hash_sum_u8)
 }
 
-pub fn get_hash_file(path: String) -> String {
+pub fn get_hash_file(path: &PathBuf) -> String {
     let mut hasher = Sha1::new();
     let mut file = fs::File::open(&path).unwrap();
     io::copy(&mut file, &mut hasher).unwrap();
@@ -106,7 +106,7 @@ pub fn get_hash_file(path: String) -> String {
     hex::encode(hash_sum_u8)
 }
 
-pub fn compress_file(source: String, target: String) {
+pub fn compress_file(source: &PathBuf, target: &PathBuf) {
     let mut input = BufReader::new(File::open(source).unwrap());
     let output = File::create(target).unwrap();
     let mut encoder = GzEncoder::new(output, Compression::default());
@@ -114,40 +114,43 @@ pub fn compress_file(source: String, target: String) {
     encoder.finish().unwrap();
 }
 
-pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
-    let objects_dir_path = vcs_dir + "/objects";
+pub fn create_blob_object(path: &PathBuf, vcs_dir: PathBuf, commit: String) {
+    let objects_dir_path = vcs_dir.join("objects");
 
-    let file_size_string = get_size_of_the_file(path.clone()).to_string();
+    let file_size_string = get_size_of_the_file(path).to_string();
     let file_size: &str = &file_size_string[..];
     let object_type: String = "blob".to_string();
     let mut data = object_type;
     data.push(' ');
     data.push_str(file_size);
     data.push('\0');
-    let zlib_text = compress_zlib(path.clone());
+    let zlib_text = compress_zlib(path);
     // let zlib_text_string = str::from_utf8(&zlib_text).unwrap();
     let zlib_text_string = format!("{:?}", &zlib_text);
     let zlib_text_slice: &str = &zlib_text_string[..];
     data.push_str(zlib_text_slice);
 
-    let object_hash = get_hash_file(path.clone());
+    let object_hash = get_hash_file(path);
     let object_dir_name: &str = &object_hash[0..2];
     let object_file_name: &str = &object_hash[2..];
 
-    fs::create_dir(objects_dir_path.clone() + "/" + object_dir_name).unwrap();
-    let file_path =
-        PathBuf::from(objects_dir_path.clone() + "/" + object_dir_name).join(object_file_name);
+    fs::create_dir_all(objects_dir_path.join(object_dir_name)).unwrap();
+    let file_path = PathBuf::from(&objects_dir_path)
+        .join(object_dir_name)
+        .join(object_file_name);
 
     //write(&file_path, &data).unwrap();
-    compress_file(path.clone(), file_path.display().to_string());
+    compress_file(path, &file_path);
 
     let ref_prefix: &str = &commit[0..2];
     let ref_file_name: &str = &commit[2..];
-    let ref_path = PathBuf::from(objects_dir_path.clone() + "/" + ref_prefix).join(ref_file_name);
+    let ref_path = PathBuf::from(&objects_dir_path)
+        .join(ref_prefix)
+        .join(ref_file_name);
     if !ref_path.exists() {
-        fs::create_dir_all(objects_dir_path + "/" + ref_prefix).unwrap();
+        fs::create_dir_all(&objects_dir_path.join(ref_prefix)).unwrap();
     }
-    let refdata: String = path + " " + &object_hash + "\n";
+    let refdata: String = path.display().to_string() + " " + &object_hash + "\n";
     let mut ref_file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -157,7 +160,7 @@ pub fn create_blob_object(path: String, vcs_dir: String, commit: String) {
     ref_file.write_all(refdata.as_bytes()).unwrap();
 }
 
-pub fn create_tree_object(d: String, vcs_dir: String, parent: String) {
+pub fn create_tree_object(d: String, vcs_dir: String) {
     let folder_size_string = get_size(d).unwrap().to_string();
     let folder_size: &str = &folder_size_string[..];
     let object_type: String = "tree".to_string();
@@ -171,15 +174,12 @@ pub fn create_tree_object(d: String, vcs_dir: String, parent: String) {
     let object_pref: &str = &object_hash[0..2];
     let object_file: &str = &object_hash[2..];
 
-    let mut file_path = PathBuf::from(vcs_dir)
-        .join(object_dir)
-        .join(object_pref);
+    let mut file_path = PathBuf::from(vcs_dir).join(object_dir).join(object_pref);
     if !file_path.exists() {
         fs::create_dir_all(file_path.clone()).unwrap();
     }
     file_path = file_path.join(object_file);
     write(&file_path, data).unwrap();
-
 }
 
 pub fn get_file_name_from_path(path: &str) {
@@ -187,10 +187,10 @@ pub fn get_file_name_from_path(path: &str) {
     println!("File name was {}", ancestors);
 }
 
-pub fn create_initial_commit(path: String, branch: String, parent: String, message: String) {
+pub fn create_initial_commit(path: &str, branch: &str, parent: &str, message: &str) {
     //create branch, write current commit hash there
     let branch_path = PathBuf::from(".vcs/branches").join(branch);
-    let commit_hash = get_hash(&parent);
+    let commit_hash = get_hash(parent);
     write(&branch_path, commit_hash.clone()).unwrap();
 
     //create commit object, write current commit hash there
@@ -199,24 +199,24 @@ pub fn create_initial_commit(path: String, branch: String, parent: String, messa
     fs::create_dir(".vcs/objects/".to_string() + commit_dir_name).unwrap();
     let commit_path =
         PathBuf::from(".vcs/objects/".to_string() + commit_dir_name).join(commit_file_name);
-    write(&commit_path, message + "\n" + &parent + "\n").unwrap();
+    write(&commit_path, message.to_string() + "\n" + &parent + "\n").unwrap();
 
     //create objects for commit
-    create_objects(path, ".vcs".to_string(), commit_hash)
+    create_objects(
+        PathBuf::from(path.to_string()),
+        PathBuf::from(".vcs"),
+        commit_hash,
+    )
 }
 
-pub fn create_objects(path: String, vcs_dir: String, commit: String) {
+pub fn create_objects(path: PathBuf, vcs_dir: PathBuf, commit: String) {
     if metadata(&path).unwrap().is_file() {
-        create_blob_object(path, vcs_dir, commit);
-    } else if metadata(&path).unwrap().is_dir() && !path.contains(".vcs") {
+        create_blob_object(&path, vcs_dir, commit);
+    } else if metadata(&path).unwrap().is_dir() && !path.display().to_string().contains(".vcs") {
         //create_tree_object(path.clone(), vcs_dir.clone(), commit.clone());
         let paths = fs::read_dir(&path).unwrap();
         for p in paths {
-            create_objects(
-                p.as_ref().unwrap().path().display().to_string(),
-                vcs_dir.clone(),
-                commit.clone(),
-            );
+            create_objects(p.unwrap().path(), vcs_dir.clone(), commit.clone());
         }
     }
 }
